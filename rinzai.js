@@ -144,6 +144,7 @@ Rinzai.prototype.addQuestion = function(q){
 	}
 	this.questions.push(question);
 	this.questionsById[q.id] = question;
+	return question;
 };
 
 module.exports = Rinzai;
