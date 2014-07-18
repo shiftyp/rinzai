@@ -1,4 +1,4 @@
-rinzai
+Rinzai
 ======
 
-A JavaScript / HTML / CSS koan generation library.
+A framwork for creating coding questions with linting and unit tests.
