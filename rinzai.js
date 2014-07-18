@@ -87,7 +87,7 @@ JSQuestion.prototype.ask = function(content){
 	} catch(e){
 		var firstStack = e.stack.split('\n')[1];
 		if(firstStack.indexOf('eval') > -1){
-			var position = firstStack.match(/(\d+)\:(\d+)/);
+			var position = firstStack.match(/(\d+)\:(\d+)\)$/);
 			return new Response(
 				ResponseTypes.ERROR,
 				this.messages[ResponseTypes.ERROR],
