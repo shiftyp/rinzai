@@ -121,7 +121,7 @@ CSSQuestion.prototype.ask = function(content){
 };
 
 var Rinzai = function(config, options){
-	this.options = options;
+	this.options = options || {};
 	this.questions = [];
 	this.questionsById = {};
 	_.forEach(config.questions, this.addQuestion, this);
