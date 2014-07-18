@@ -1,4 +1,4 @@
-var JSHint = require('jshint');
+var JSHint = require('jshint').JSHINT;
 var CSSLint = require('csslint');
 var domify = require('domify');
 var _ = require('lodash');
