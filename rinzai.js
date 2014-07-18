@@ -22,7 +22,8 @@ var RinzaiError = function(message, line, char){
 	this.char = char;
 };
 
-var Question = function(config){
+var Question = function(config, options){
+	this.options = options;
 	this.test = config.test;
 	this.messages = config.messages || {};
 	this.type = config.type;
@@ -70,7 +71,7 @@ var JSQuestion = function(){
 };
 
 JSQuestion.prototype.ask = function(content){
-	JSHint(content);
+	JSHint(content, this.options.jshint);
 	if(JSHint.errors.length){
 		var errors = [];
 		JSHint.errors.forEach(function(err){
@@ -130,13 +131,13 @@ Rinzai.prototype.addQuestion = function(q){
 	var question;
 	switch(q.type){
 		case 'html':
-			question = new HTMLQuestion(q);
+			question = new HTMLQuestion(q, this.options);
 			break;
 		case 'javascript':
-			question = new JSQuestion(q);
+			question = new JSQuestion(q, this.options);
 			break;
 		case 'css':
-			question = new CSSQuestion(q);
+			question = new CSSQuestion(q, this.options);
 			break;
 		default:
 			throw new Error('Question type is unknown or undefined');
