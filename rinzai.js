@@ -10,6 +10,12 @@ var ResponseTypes = {
 	SUCCESS : 'success'
 };
 
+var extend = function(a, b){
+	var surrogate = function(){};
+	surrogate.prototype = a.prototype;
+	b.prototype = new surrogate();
+};
+
 var Response = function(type, message, errors){
 	this.type = type;
 	this.message = message || '';
@@ -25,17 +31,40 @@ var RinzaiError = function(message, line, char){
 var Question = function(config, options){
 	this.options = options;
 	this.test = config.test;
+	this.envUrl = config.envUrl;
 	this.messages = config.messages || {};
 	this.type = config.type;
+};
+
+Question.prototype.createEnvironment = function(){
+	this.envFrame = document.createElement('iframe').contentWindow;
+	if(this.envUrl) env.contentWindow.location = this.envUrl;
+	return this.evnFrame.contentWindow;
+};
+
+Question.prototype.destroyEnvironment = function(){
+	if(this.envFrame) delete this.envFrame;
+};
+
+Question.prototype.runTest = function(content){
+	var env = this.createEnvironment();
+	try {
+		env.eval('('+this.test.toString()+')("'+content.replace(/"/g, '\\\"')+'");');
+	} catch(e) {
+		this.destroyEnvironment();
+		return e;
+	}
 };
 
 var HTMLQuestion = function(){
 	Question.apply(this, arguments);
 };
 
+extend(Question, HTMLQuestion);
+
 HTMLQuestion.prototype.answer = function(content){
 	var nodes;
-	
+	var env = this.createEnvironment
 	try {
 		nodes = domify(content);
 	} catch(e) {
@@ -69,6 +98,8 @@ HTMLQuestion.prototype.answer = function(content){
 var JSQuestion = function(){
 	Question.apply(this, arguments);
 };
+
+extend(Question, JSQuestion);
 
 JSQuestion.prototype.ask = function(content){
 	JSHint(content, this.options.jshint);
@@ -115,6 +146,8 @@ JSQuestion.prototype.ask = function(content){
 var CSSQuestion = function(config){
 	this.test = config.test;
 };
+
+extend(Question, CSSQuestion);
 
 CSSQuestion.prototype.ask = function(content){
 	
