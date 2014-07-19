@@ -141,7 +141,7 @@ JSQuestion.prototype.ask = function(content, cb){
 	this.runTest(content, function(testErr){
 		if(testErr){
 			var firstStack = testErr.stack.split('\n')[1];
-			if(firstStack.indexOf('eval') > -1){
+			if(firstStack && firstStack.indexOf('eval') > -1){
 				var position = firstStack.match(/(\d+)\:(\d+)\)$/);
 				return cb(new Response(
 					ResponseTypes.ERROR,
