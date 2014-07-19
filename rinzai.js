@@ -147,7 +147,7 @@ JSQuestion.prototype.ask = function(content, cb){
 			ResponseTypes.STYLE,
 			this.messages[ResponseTypes.STYLE],
 			_.map(styleErrors.getErrorList(), function(err){
-				return new RinzaiError(err.message, err.line, err.char);
+				return new RinzaiError(err.message, err.line, err.column);
 			})
 		));
 	}
