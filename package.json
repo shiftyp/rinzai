@@ -19,5 +19,8 @@
 		"jshint": "^2.5.2",
 		"lodash": "^2.4.1",
 		"jscs": "^1.5.8"
+	},
+	"scripts" : {
+		"browserify" : "browserify --standalone Rinzai rinzai.js -o rinzai-browser.js && uglifyjs -o rinzai-browser.js rinzai-browser.js"
 	}
 }
