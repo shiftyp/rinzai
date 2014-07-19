@@ -1,10 +1,12 @@
 var JSHint = require('jshint').JSHINT;
 var CSSLint = require('csslint');
 var domify = require('domify');
+var jscs = require('jscs/lib/string-checker.js');
 var _ = require('lodash');
 
 var ResponseTypes = {
 	LINT : 'lint',
+	STYLE : 'style',
 	ERROR : 'error',
 	FAILURE : 'failure',
 	SUCCESS : 'success'
@@ -127,16 +129,24 @@ JSQuestion.prototype.ask = function(content, cb){
 
 	JSHint(content, this.options.jshint);
 	if(JSHint.errors.length){
-		var errors = [];
+		var lintErrors = [];
 		JSHint.errors.forEach(function(err){
-			if(err) errors.push(new RinzaiError(err.reason, err.line));
+			if(err) lintErrors.push(new RinzaiError(err.reason, err.line));
 		});
 		return cb(new Response(
 			ResponseTypes.LINT,
 			this.messages[ResponseTypes.LINT],
-			errors
+			lintErrors
 		));
 	}
+
+	var checker = new JscsStringChecker();
+	checker.registerDefaultRules();
+	checker.configure(this.options.jscs || {});
+	var styleErrors = checker.checkString(content);
+	styleErrors.getErrorList().forEach(function(error) {
+			console.log(error);
+	});	
 
 	this.runTest(content, function(testErr){
 		if(testErr){
