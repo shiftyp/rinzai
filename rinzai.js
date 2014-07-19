@@ -36,24 +36,45 @@ var Question = function(config, options){
 	this.type = config.type;
 };
 
-Question.prototype.createEnvironment = function(){
-	this.envFrame = document.createElement('iframe').contentWindow;
-	if(this.envUrl) env.contentWindow.location = this.envUrl;
-	return this.evnFrame.contentWindow;
+Question.prototype.createEnvironment = function(cb){
+	var self = this;
+	this.envFrame = document.createElement('iframe');
+	this.envFrame.style.position = 'absolute';
+	this.envFrame.style.top = '-1000px';
+	this.envFrame.style.left = '-1000px';
+	document.body.appendChild(this.envFrame);
+	var env = this.envFrame.contentWindow;
+	if(this.envUrl){
+		this.envFrame.src = this.envUrl;
+		var onLoad = function(){
+			self.envFrame.removeEventListener('load', onLoad);
+			cb(env);
+		};
+		this.envFrame.addEventListener('load', onLoad);
+	} else {
+		cb(env);
+	}
 };
 
 Question.prototype.destroyEnvironment = function(){
-	if(this.envFrame) delete this.envFrame;
+	if(this.envFrame){
+		this.envFrame.parentNode.removeChild(this.envFrame);
+	 	delete this.envFrame;
+	}
 };
 
-Question.prototype.runTest = function(content){
-	var env = this.createEnvironment();
-	try {
-		env.eval('('+this.test.toString()+')("'+content.replace(/"/g, '\\\"')+'");');
-	} catch(e) {
-		this.destroyEnvironment();
-		return e;
-	}
+Question.prototype.runTest = function(content, cb){
+	var self = this;
+	var env = this.createEnvironment(function(env){
+		try {
+			self.test(content, env);
+		} catch(e) {
+			self.destroyEnvironment();
+			return cb(e);
+		}
+		self.destroyEnvironment();
+		return cb();
+	});
 };
 
 var HTMLQuestion = function(){
@@ -62,37 +83,37 @@ var HTMLQuestion = function(){
 
 extend(Question, HTMLQuestion);
 
-HTMLQuestion.prototype.answer = function(content){
+HTMLQuestion.prototype.answer = function(content, cb){
+	var self = this;
 	var nodes;
-	var env = this.createEnvironment
 	try {
 		nodes = domify(content);
 	} catch(e) {
-		return new Response(
+		return cb(new Response(
 			ResponseTypes.ERROR, 
 			this.messages[ResponseTypes.ERROR],
 			[
 				new RinzaiError('HTML Parse Error', null, null)
 			]
-		);
+		));
 	}
 	
-	try {
-		this.test(nodes);
-	} catch(e) {
-		return new Response(
-			ResponseTypes.FAILURE,
-			this.messages[ResponseTypes.FAILURE],
-			[
-				new RinzaiError(e.message, null, null)
-			]
-		);
-	}
-	
-	return new Response(
-		ResponseTypes.SUCCESS,
-		this.messages[ResponseTypes.SUCCESS]
-	);
+	this.runTest(nodes, function(testErr){
+		if(testErr) {
+			return cb(new Response(
+				ResponseTypes.FAILURE,
+				self.messages[ResponseTypes.FAILURE],
+				[
+					new RinzaiError(testErr.message, null, null)
+				]
+			));
+		}
+		
+		return cb(new Response(
+			ResponseTypes.SUCCESS,
+			self.messages[ResponseTypes.SUCCESS]
+		));
+	});
 };
 
 var JSQuestion = function(){
@@ -101,46 +122,49 @@ var JSQuestion = function(){
 
 extend(Question, JSQuestion);
 
-JSQuestion.prototype.ask = function(content){
+JSQuestion.prototype.ask = function(content, cb){
+	var self = this;
+
 	JSHint(content, this.options.jshint);
 	if(JSHint.errors.length){
 		var errors = [];
 		JSHint.errors.forEach(function(err){
 			if(err) errors.push(new RinzaiError(err.reason, err.line));
 		});
-		return new Response(
+		return cb(new Response(
 			ResponseTypes.LINT,
 			this.messages[ResponseTypes.LINT],
 			errors
-		);
+		));
 	}
-	try {
-		this.test(content);
-	} catch(e){
-		var firstStack = e.stack.split('\n')[1];
-		if(firstStack.indexOf('eval') > -1){
-			var position = firstStack.match(/(\d+)\:(\d+)\)$/);
-			return new Response(
-				ResponseTypes.ERROR,
-				this.messages[ResponseTypes.ERROR],
-				[
-					new RinzaiError(e.message, parseInt(position[1], 10), parseInt(position[2], 10))
-				]
-			);
-		} else {
-			return new Response(
-				ResponseTypes.FAILURE,
-				this.messages[ResponseTypes.FAILURE],
-				[
-					new RinzaiError(e.message, null, null)
-				]
-			);
+
+	this.runTest(content, function(testErr){
+		if(testErr){
+			var firstStack = testErr.stack.split('\n')[1];
+			if(firstStack.indexOf('eval') > -1){
+				var position = firstStack.match(/(\d+)\:(\d+)\)$/);
+				return cb(new Response(
+					ResponseTypes.ERROR,
+					self.messages[ResponseTypes.ERROR],
+					[
+						new RinzaiError(testErr.message, parseInt(position[1], 10), parseInt(position[2], 10))
+					]
+				));
+			} else {
+				return cb(new Response(
+					ResponseTypes.FAILURE,
+					self.messages[ResponseTypes.FAILURE],
+					[
+						new RinzaiError(testErr.message, null, null)
+					]
+				));
+			}
 		}
-	}
-	return new Response(
-		ResponseTypes.SUCCESS,
-		this.messages[ResponseTypes.SUCCESS]
-	);
+		return cb(new Response(
+			ResponseTypes.SUCCESS,
+			self.messages[ResponseTypes.SUCCESS]
+		));
+	});
 };
 
 var CSSQuestion = function(config){
