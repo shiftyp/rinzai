@@ -1,7 +1,7 @@
 var JSHint = require('jshint').JSHINT;
 var CSSLint = require('csslint');
 var domify = require('domify');
-var jscs = require('jscs/lib/string-checker.js');
+var JscsStringChecker = require('jscs/lib/string-checker.js');
 var _ = require('lodash');
 
 var ResponseTypes = {
@@ -129,14 +129,12 @@ JSQuestion.prototype.ask = function(content, cb){
 
 	JSHint(content, this.options.jshint);
 	if(JSHint.errors.length){
-		var lintErrors = [];
-		JSHint.errors.forEach(function(err){
-			if(err) lintErrors.push(new RinzaiError(err.reason, err.line));
-		});
 		return cb(new Response(
 			ResponseTypes.LINT,
 			this.messages[ResponseTypes.LINT],
-			lintErrors
+			_.map(JSHint.errors, function(err){
+				return new RinzaiError(err.reason, err.line);
+			})
 		));
 	}
 
@@ -144,9 +142,15 @@ JSQuestion.prototype.ask = function(content, cb){
 	checker.registerDefaultRules();
 	checker.configure(this.options.jscs || {});
 	var styleErrors = checker.checkString(content);
-	styleErrors.getErrorList().forEach(function(error) {
-			console.log(error);
-	});	
+	if(styleErrors.getErrorList().length){
+		return cb(new Response(
+			ResponseTypes.STYLE,
+			this.messages[ResponseTypes.STYLE],
+			_.map(styleErrors.getErrorList(), function(err){
+				return new RinzaiError(err.message, err.line, err.char);
+			})
+		));
+	}
 
 	this.runTest(content, function(testErr){
 		if(testErr){
