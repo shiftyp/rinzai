@@ -75,7 +75,7 @@ JSQuestion.prototype.ask = function(content){
 	if(JSHint.errors.length){
 		var errors = [];
 		JSHint.errors.forEach(function(err){
-			errors.push(new RinzaiError(err.reason, err.line - 1, err.char - 1));
+			errors.push(new RinzaiError(err.reason, err.line));
 		});
 		return new Response(
 			ResponseTypes.LINT,
