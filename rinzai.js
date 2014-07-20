@@ -133,7 +133,7 @@ HTMLQuestion.prototype.validate = function(html){
 			allnodes = d.getElementsByTagName('*');
 			for (var i=allnodes.length-1; i>=0; i--) {
 					if (allnodes[i] instanceof HTMLUnknownElement){
-						errors.push(new RinzaiError('Unkown HTML element: ' + allnodes[i].tagName, null, null));
+						errors.push(new RinzaiError('Unknown HTML element: ' + allnodes[i].tagName, null, null));
 					}
 			}
 	}
