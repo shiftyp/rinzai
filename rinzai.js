@@ -1,5 +1,7 @@
 var JSHint = require('jshint').JSHINT;
 var CSSLint = require('csslint');
+var cssparse = require('css');
+var acorn = require('acorn');		
 var domify = require('domify');
 var JscsStringChecker = require('jscs/lib/string-checker.js');
 var _ = require('lodash');
@@ -65,11 +67,11 @@ Question.prototype.destroyEnvironment = function(){
 	}
 };
 
-Question.prototype.runTest = function(content, cb){
+Question.prototype.runTest = function(content, parsed, cb){
 	var self = this;
 	var env = this.createEnvironment(function(env){
 		try {
-			self.test(content, env);
+			self.test(content, parsed, env);
 		} catch(e) {
 			self.destroyEnvironment();
 			return cb(e);
@@ -152,7 +154,8 @@ JSQuestion.prototype.answer = function(content, cb){
 		));
 	}
 
-	this.runTest(content, function(testErr){
+	var ast = acorn.parse(content);
+	this.runTest(content, ast, function(testErr){
 		if(testErr){
 			var firstStack = testErr.stack.split('\n')[1];
 			if(firstStack && firstStack.indexOf('eval') > -1){
