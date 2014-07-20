@@ -102,7 +102,7 @@ HTMLQuestion.prototype.answer = function(content, cb){
 		));
 	}
 	
-	this.runTest(nodes, function(testErr){
+	this.runTest(content, nodes, function(testErr){
 		if(testErr) {
 			return cb(new Response(
 				ResponseTypes.FAILURE,
@@ -191,7 +191,16 @@ var CSSQuestion = function(config){
 extend(Question, CSSQuestion);
 
 CSSQuestion.prototype.answer = function(content){
-	
+	var results = CSSLint(content);
+	if(results.messages.length){
+		return cb(new Response(
+			ResponseTypes.LINT,
+			this.messages[ResponseTypes.LINT],
+			_.map(results.messages, function(err){
+				return new RinzaiError(err.message, err.line, err.col);
+			})
+		));
+	}
 };
 
 var Rinzai = function(config, options){
