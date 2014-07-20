@@ -101,7 +101,7 @@ HTMLQuestion.prototype.answer = function(content, cb){
 		]));
 	}
 	
-	var nodes = domify(content);
+	var nodes = _.toArray(domify(content));
 	this.runTest(content, nodes, function(testErr){
 		if(testErr) {
 			return cb(new Response(
