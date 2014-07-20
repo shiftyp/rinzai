@@ -1,5 +1,5 @@
 var JSHint = require('jshint').JSHINT;
-var CSSLint = require('csslint');
+var CSSLint = require('csslint').CSSLint;
 var cssparse = require('css');
 var acorn = require('acorn');		
 var domify = require('domify');
