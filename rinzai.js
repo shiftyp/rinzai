@@ -190,7 +190,7 @@ var CSSQuestion = function(config){
 
 extend(Question, CSSQuestion);
 
-CSSQuestion.prototype.answer = function(content){
+CSSQuestion.prototype.answer = function(content, cb){
 	var results = CSSLint.verify(content);
 	if(results.messages.length){
 		return cb(new Response(
