@@ -1,6 +1,6 @@
 var JSHint = require('jshint').JSHINT;
 var CSSLint = require('csslint').CSSLint;
-var cssparse = require('css');
+var css = require('css');
 var acorn = require('acorn');		
 var domify = require('domify');
 var JscsStringChecker = require('jscs/lib/string-checker.js');
@@ -221,9 +221,21 @@ CSSQuestion.prototype.answer = function(content, cb){
 			})
 		));
 	}
-	return cb(new Response(
-		ResponseTypes.SUCCESS
-	));
+
+	var ast = css.parse(content);
+	this.runTest(content, ast, function(testErr){
+		if(testErr){
+			return cb(new Response(
+				ResponseTypes.FAILURE,
+				[
+					new RinzaiError(testErr.message, null, null)
+				]
+			));
+		}
+		return cb(new Response(
+			ResponseTypes.SUCCESS
+		));
+	});
 };
 
 var Rinzai = function(config, options){
