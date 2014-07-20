@@ -101,9 +101,12 @@ HTMLQuestion.prototype.answer = function(content, cb){
 		]));
 	}
 	
-	var nodes = domify(content);
-	if (!_.isArray(nodes)){
-		nodes = [nodes];
+	var node = domify(content);
+	var nodes;
+	if (node instanceof DocumentFragment){
+		nodes = node.querySelectorAll('*');
+	} else {
+		nodes = [node];
 	}
 	this.runTest(content, nodes, function(testErr){
 		if(testErr) {
@@ -123,7 +126,7 @@ HTMLQuestion.prototype.answer = function(content, cb){
 
 HTMLQuestion.prototype.validate = function(html){
 	var parser = new DOMParser();
-	var d = parser.parseFromString('<?xml version="1.0"?>\n'+html,'text/xml');
+	var d = parser.parseFromString('<?xml version="1.0"?><html>\n' + html + '\n</html>','text/xml');
 	var errors = [];
 	if (d.querySelector('parsererror')) {
 		errors = _.map(d.querySelectorAll('parsererror > div'), function(node){
