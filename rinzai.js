@@ -88,18 +88,15 @@ extend(Question, HTMLQuestion);
 
 HTMLQuestion.prototype.answer = function(content, cb){
 	var self = this;
-	var nodes;
+	var parser = new DOMParser();
+
 	try {
-		nodes = domify(content);
+		var parseErrors = this.validate(content);
 	} catch(e) {
-		return cb(new Response(
-			ResponseTypes.ERROR, 
-			[
-				new RinzaiError('HTML Parse Error', null, null)
-			]
-		));
+		return cb(new Response(ResponseTypes.ERROR, parseErrors));
 	}
 	
+	var nodes = domify(content);
 	this.runTest(content, nodes, function(testErr){
 		if(testErr) {
 			return cb(new Response(
@@ -114,6 +111,28 @@ HTMLQuestion.prototype.answer = function(content, cb){
 			ResponseTypes.SUCCESS
 		));
 	});
+};
+
+HTMLQuestion.prototype.validate = function(html){
+	var parser = new DOMParser();
+	var d = parser.parseFromString('<?xml version="1.0"?>\n'+html,'text/xml');
+	var errors = [];
+	if (d.querySelector('parsererror')) {
+		errors = _.map(d.querySelectorAll('parsererror > div'), function(node){
+			var errorText = node.textContent;
+			var matches = errorText.match(/error on line (\d+) at column (\d+)\:\s(.*?)$/);
+			return new RinzaiError(matches[3], parseInt(matches[1], 10) - 1, parseInt(matches[2], 10));
+		});
+	} else {
+			d = parser.parseFromString(html, 'text/html');
+			allnodes = d.getElementsByTagName('*');
+			for (var i=allnodes.length-1; i>=0; i--) {
+					if (allnodes[i] instanceof HTMLUnknownElement){
+						errors.push(new RinzaiError('Unkown HTML element: ' + allnodes[i].tagName, null, null));
+					}
+			}
+	}
+	return errors;
 };
 
 var JSQuestion = function(){
