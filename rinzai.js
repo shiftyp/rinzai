@@ -92,8 +92,13 @@ HTMLQuestion.prototype.answer = function(content, cb){
 
 	try {
 		var parseErrors = this.validate(content);
+		if (parseErrors.length){
+			return cb(new Response(ResponseTypes.LINT, parseErrors));
+		}
 	} catch(e) {
-		return cb(new Response(ResponseTypes.ERROR, parseErrors));
+		return cb(new Response(ResponseTypes.ERROR, [
+			new RinzaiError(e.message, null, null)
+		]));
 	}
 	
 	var nodes = domify(content);
@@ -120,7 +125,7 @@ HTMLQuestion.prototype.validate = function(html){
 	if (d.querySelector('parsererror')) {
 		errors = _.map(d.querySelectorAll('parsererror > div'), function(node){
 			var errorText = node.textContent;
-			var matches = errorText.match(/error on line (\d+) at column (\d+)\:\s(.*?)$/);
+			var matches = errorText.match(/error on line (\d+) at column (\d+)\:\s(.+)/);
 			return new RinzaiError(matches[3], parseInt(matches[1], 10) - 1, parseInt(matches[2], 10));
 		});
 	} else {
