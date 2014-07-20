@@ -20,9 +20,8 @@ var extend = function(a, b){
 	b.prototype = new surrogate();
 };
 
-var Response = function(type, message, errors){
+var Response = function(type, errors){
 	this.type = type;
-	this.message = message || '';
 	this.errors = errors;
 };
 
@@ -95,7 +94,6 @@ HTMLQuestion.prototype.answer = function(content, cb){
 	} catch(e) {
 		return cb(new Response(
 			ResponseTypes.ERROR, 
-			this.messages[ResponseTypes.ERROR],
 			[
 				new RinzaiError('HTML Parse Error', null, null)
 			]
@@ -106,7 +104,6 @@ HTMLQuestion.prototype.answer = function(content, cb){
 		if(testErr) {
 			return cb(new Response(
 				ResponseTypes.FAILURE,
-				self.messages[ResponseTypes.FAILURE],
 				[
 					new RinzaiError(testErr.message, null, null)
 				]
@@ -114,8 +111,7 @@ HTMLQuestion.prototype.answer = function(content, cb){
 		}
 		
 		return cb(new Response(
-			ResponseTypes.SUCCESS,
-			self.messages[ResponseTypes.SUCCESS]
+			ResponseTypes.SUCCESS
 		));
 	});
 };
@@ -133,7 +129,6 @@ JSQuestion.prototype.answer = function(content, cb){
 	if(JSHint.errors.length){
 		return cb(new Response(
 			ResponseTypes.LINT,
-			this.messages[ResponseTypes.LINT],
 			_.map(JSHint.errors, function(err){
 				return new RinzaiError(err.reason, err.line);
 			})
@@ -147,7 +142,6 @@ JSQuestion.prototype.answer = function(content, cb){
 	if(styleErrors.getErrorList().length){
 		return cb(new Response(
 			ResponseTypes.STYLE,
-			this.messages[ResponseTypes.STYLE],
 			_.map(styleErrors.getErrorList(), function(err){
 				return new RinzaiError(err.message, err.line, err.column);
 			})
@@ -162,7 +156,6 @@ JSQuestion.prototype.answer = function(content, cb){
 				var position = firstStack.match(/(\d+)\:(\d+)\)$/);
 				return cb(new Response(
 					ResponseTypes.ERROR,
-					self.messages[ResponseTypes.ERROR],
 					[
 						new RinzaiError(testErr.message, parseInt(position[1], 10), parseInt(position[2], 10))
 					]
@@ -170,7 +163,6 @@ JSQuestion.prototype.answer = function(content, cb){
 			} else {
 				return cb(new Response(
 					ResponseTypes.FAILURE,
-					self.messages[ResponseTypes.FAILURE],
 					[
 						new RinzaiError(testErr.message, null, null)
 					]
@@ -178,8 +170,7 @@ JSQuestion.prototype.answer = function(content, cb){
 			}
 		}
 		return cb(new Response(
-			ResponseTypes.SUCCESS,
-			self.messages[ResponseTypes.SUCCESS]
+			ResponseTypes.SUCCESS
 		));
 	});
 };
@@ -195,15 +186,13 @@ CSSQuestion.prototype.answer = function(content, cb){
 	if(results.messages.length){
 		return cb(new Response(
 			ResponseTypes.LINT,
-			this.messages[ResponseTypes.LINT],
 			_.map(results.messages, function(err){
 				return new RinzaiError(err.message, err.line, err.col);
 			})
 		));
 	}
 	return cb(new Response(
-		ResponseTypes.SUCCESS,
-		self.messages[ResponseTypes.SUCCESS]
+		ResponseTypes.SUCCESS
 	));
 };
 
