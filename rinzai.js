@@ -191,7 +191,7 @@ var CSSQuestion = function(config){
 extend(Question, CSSQuestion);
 
 CSSQuestion.prototype.answer = function(content){
-	var results = CSSLint(content);
+	var results = CSSLint.verify(content);
 	if(results.messages.length){
 		return cb(new Response(
 			ResponseTypes.LINT,
