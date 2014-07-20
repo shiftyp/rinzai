@@ -201,6 +201,10 @@ CSSQuestion.prototype.answer = function(content){
 			})
 		));
 	}
+	return cb(new Response(
+		ResponseTypes.SUCCESS,
+		self.messages[ResponseTypes.SUCCESS]
+	));
 };
 
 var Rinzai = function(config, options){
