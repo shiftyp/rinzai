@@ -124,7 +124,7 @@ var JSQuestion = function(){
 
 extend(Question, JSQuestion);
 
-JSQuestion.prototype.ask = function(content, cb){
+JSQuestion.prototype.answer = function(content, cb){
 	var self = this;
 
 	JSHint(content, this.options.jshint);
@@ -187,7 +187,7 @@ var CSSQuestion = function(config){
 
 extend(Question, CSSQuestion);
 
-CSSQuestion.prototype.ask = function(content){
+CSSQuestion.prototype.answer = function(content){
 	
 };
 
