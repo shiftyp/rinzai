@@ -102,9 +102,9 @@ HTMLQuestion.prototype.answer = function(content, cb){
 	}
 	
 	var node = domify(content);
-	var nodes;
+	var nodes = [];
 	if (node instanceof DocumentFragment){
-		nodes = node.querySelectorAll('*');
+		nodes = _.toArray(node.querySelectorAll('*'));
 	} else {
 		nodes = [node];
 	}
