@@ -14,70 +14,108 @@ var ResponseTypes = {
 	SUCCESS : 'success'
 };
 
-var extend = function(a, b){
+var extend = function (a, b) {
 	var surrogate = function(){};
 	surrogate.prototype = a.prototype;
 	b.prototype = new surrogate();
 };
 
-var Response = function(type, errors){
+var Response = function (type, errors) {
 	this.type = type;
 	this.errors = errors;
 };
 
-var RinzaiError = function(message, line, char){
+var RinzaiError = function (message, line, char) {
 	this.message = message;
 	this.line = line;
 	this.char = char;
 };
 
-var Question = function(config, options){
+var Run = function (fn, done, timeout) {
+	this.fn = fn;
+	this.done = done;
+	this.timeout = timeout;
+};
+
+var Question = function (config, options, runner) {
 	this.options = options;
 	this.test = config.test;
 	this.envUrl = config.envUrl;
 	this.messages = config.messages || {};
 	this.type = config.type;
+	this.runner = runner;
+	this.async = this.test.length === 4;
+	this.timeout = options.timeout || 500;
 };
 
 Question.prototype.createEnvironment = function(cb){
 	var self = this;
-	this.envFrame = document.createElement('iframe');
-	this.envFrame.style.position = 'absolute';
-	this.envFrame.style.top = '-1000px';
-	this.envFrame.style.left = '-1000px';
-	document.body.appendChild(this.envFrame);
-	var env = this.envFrame.contentWindow;
+	if(!this.envFrames) this.envFrames = [];
+	var envFrame = document.createElement('iframe');
+	envFrame.style.position = 'absolute';
+	envFrame.style.top = '-1000px';
+	envFrame.style.left = '-1000px';
+	document.body.appendChild(envFrame);
+	this.envFrames.push(envFrame);
+	var env = envFrame.contentWindow;
 	if(this.envUrl){
-		this.envFrame.src = this.envUrl;
+		envFrame.src = this.envUrl;
 		var onLoad = function(){
-			self.envFrame.removeEventListener('load', onLoad);
+			envFrame.removeEventListener('load', onLoad);
 			cb(env);
 		};
-		this.envFrame.addEventListener('load', onLoad);
+		envFrame.addEventListener('load', onLoad);
 	} else {
 		cb(env);
 	}
 };
 
-Question.prototype.destroyEnvironment = function(){
-	if(this.envFrame){
-		this.envFrame.parentNode.removeChild(this.envFrame);
-	 	delete this.envFrame;
+Question.prototype.destroyEnvironments = function(){
+	if(this.envFrames){
+		_.forEach(this.envFrames, function(envFrame){
+			envFrame.parentNode.removeChild(envFrame);
+		});
+	 	delete this.envFrames;
 	}
 };
 
 Question.prototype.runTest = function(content, parsed, cb){
 	var self = this;
-	var env = this.createEnvironment(function(env){
-		try {
-			self.test(content, parsed, env);
-		} catch(e) {
-			self.destroyEnvironment();
-			return cb(e);
+	var run;
+	var envFactory = _.bindKey(this, 'createEnvironment');
+
+	var done = function(err){
+		self.destroyEnvironments();
+		if (err) {
+			cb(err);
+		} else {
+			cb();
 		}
-		self.destroyEnvironment();
-		return cb();
-	});
+		self.runner.dequeue();
+	};
+
+	var fn = function(){
+		try {
+			if (self.async) {
+				self.test(content, parsed, envFactory, done);
+			} else {
+				self.text(content, parsed, envFactory);
+			}
+		} catch(e) {
+			done(e);
+		}
+		if (!self.async) {
+			done();
+		}
+	};
+
+	if (this.async) {
+		run = new Run(fn, done, this.timeout);
+	} else {
+		run = new Run(fn);
+	}
+
+	this.runner.queue(run);
 };
 
 var HTMLQuestion = function(){
@@ -154,31 +192,39 @@ extend(Question, JSQuestion);
 
 JSQuestion.prototype.answer = function(content, cb){
 	var self = this;
+	var ast;
+	try {
+		JSHint(content, this.options.jshint);
+		if(JSHint.errors.length){
+			return cb(new Response(
+				ResponseTypes.LINT,
+				_.map(JSHint.errors, function(err){
+					return new RinzaiError(err.reason, err.line);
+				})
+			));
+		}
 
-	JSHint(content, this.options.jshint);
-	if(JSHint.errors.length){
+		var checker = new JscsStringChecker();
+		checker.registerDefaultRules();
+		checker.configure(this.options.jscs || {});
+		var styleErrors = checker.checkString(content);
+		if(styleErrors.getErrorList().length){
+			return cb(new Response(
+				ResponseTypes.STYLE,
+				_.map(styleErrors.getErrorList(), function(err){
+					return new RinzaiError(err.message, err.line, err.column);
+				})
+			));
+		}
+
+		ast = acorn.parse(content);
+	} catch (e) {
 		return cb(new Response(
-			ResponseTypes.LINT,
-			_.map(JSHint.errors, function(err){
-				return new RinzaiError(err.reason, err.line);
-			})
+			ResponseTypes.ERROR,
+			[new RinzaiError(e.message, null, null)]
 		));
 	}
 
-	var checker = new JscsStringChecker();
-	checker.registerDefaultRules();
-	checker.configure(this.options.jscs || {});
-	var styleErrors = checker.checkString(content);
-	if(styleErrors.getErrorList().length){
-		return cb(new Response(
-			ResponseTypes.STYLE,
-			_.map(styleErrors.getErrorList(), function(err){
-				return new RinzaiError(err.message, err.line, err.column);
-			})
-		));
-	}
-
-	var ast = acorn.parse(content);
 	this.runTest(content, ast, function(testErr){
 		if(testErr){
 			var firstStack = testErr.stack.split('\n')[1];
@@ -186,16 +232,12 @@ JSQuestion.prototype.answer = function(content, cb){
 				var position = firstStack.match(/(\d+)\:(\d+)\)$/);
 				return cb(new Response(
 					ResponseTypes.ERROR,
-					[
-						new RinzaiError(testErr.message, parseInt(position[1], 10), parseInt(position[2], 10))
-					]
+					[new RinzaiError(testErr.message, parseInt(position[1], 10), parseInt(position[2], 10))]
 				));
 			} else {
 				return cb(new Response(
 					ResponseTypes.FAILURE,
-					[
-						new RinzaiError(testErr.message, null, null)
-					]
+					[new RinzaiError(testErr.message, null, null)]
 				));
 			}
 		}
@@ -205,25 +247,25 @@ JSQuestion.prototype.answer = function(content, cb){
 	});
 };
 
-var CSSQuestion = function(config){
-	this.test = config.test;
+var CSSQuestion = function(){
+	Question.apply(this, arguments);
 };
 
 extend(Question, CSSQuestion);
 
-CSSQuestion.prototype.answer = function(content, cb){
+CSSQuestion.prototype.answer = function (content, cb) {
 	var results = CSSLint.verify(content);
 	if(results.messages.length){
 		return cb(new Response(
 			ResponseTypes.LINT,
-			_.map(results.messages, function(err){
+			_.map(results.messages, function (err) {
 				return new RinzaiError(err.message, err.line, err.col);
 			})
 		));
 	}
 
 	var ast = css.parse(content);
-	this.runTest(content, ast, function(testErr){
+	this.runTest(content, ast, function (testErr) {
 		if(testErr){
 			return cb(new Response(
 				ResponseTypes.FAILURE,
@@ -238,24 +280,92 @@ CSSQuestion.prototype.answer = function(content, cb){
 	});
 };
 
-var Rinzai = function(config, options){
+var Runner = function () {
+	this.runQueue = [];
+	this.running = false;
+};
+
+Runner.prototype.queue = function (run) {
+	if (this.running) {
+		this.runQueue.push(run);
+	} else {
+		this.running = true;
+		this.run(run);
+	}
+};
+
+Runner.prototype.dequeue = function () {
+	this.removeErrorHandler();
+	this.clearTimeout();
+	if (this.runQueue.length) {
+		this.run(this.runQueue.shift());
+	} else {
+		this.running = false;
+	}
+};
+
+Runner.prototype.run = function (run) {
+	var self = this;
+	if (run.done) {
+		this.addErrorHandler(run.done);
+		this.setTimeout(run.done, run.timeout);		
+	}
+	run.fn();
+};
+
+Runner.prototype.addErrorHandler = function (handler) {
+	var self = this;
+	this.errorHandler = function(evt){
+		self.removeErrorHandler();
+		self.clearTimeout();
+		handler(evt.error);
+		evt.preventDefault();
+	};
+	window.addEventListener('error', this.errorHandler);
+};
+
+Runner.prototype.removeErrorHandler = function () {
+	if(this.errorHandler) {
+		window.removeEventListener('error', this.errorHandler);
+		delete this.errorHandler;
+	}
+};
+
+Runner.prototype.setTimeout = function (handler, timeout) {
+	var self = this;
+	this.runTimeout = setTimeout(function () {
+		self.removeErrorHandler();
+		delete self.runTimeout;
+		handler(new Error('Test timed out.'));
+	}, timeout);
+};
+
+Runner.prototype.clearTimeout = function () {
+	if (this.runTimeout !== undefined) {
+		clearTimeout(this.runTimeout);
+		delete this.runTimeout;
+	}
+};
+
+var Rinzai = function (config, options) {
 	this.options = options || {};
 	this.questions = [];
 	this.questionsById = {};
+	this.runner = new Runner();
 	_.forEach(config.questions, this.addQuestion, this);
 };
 
-Rinzai.prototype.addQuestion = function(q){
+Rinzai.prototype.addQuestion = function (q) {
 	var question;
 	switch(q.type){
 		case 'html':
-			question = new HTMLQuestion(q, this.options);
+			question = new HTMLQuestion(q, this.options, this.runner);
 			break;
 		case 'javascript':
-			question = new JSQuestion(q, this.options);
+			question = new JSQuestion(q, this.options, this.runner);
 			break;
 		case 'css':
-			question = new CSSQuestion(q, this.options);
+			question = new CSSQuestion(q, this.options, this.runner);
 			break;
 		default:
 			throw new Error('Question type is unknown or undefined');
