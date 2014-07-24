@@ -20,7 +20,8 @@
 		"lodash": "~2.4.1",
 		"jscs": "~1.5.8",
 		"css" : "~2.0.0",
-		"acorn" : "~0.6.0"
+		"acorn" : "~0.6.0",
+		"jasmine-core" : "2.0.1"
 	},
 	"scripts" : {
 		"browserify" : "browserify --standalone Rinzai rinzai.js -o rinzai-browser.js && uglifyjs -o rinzai-browser.js rinzai-browser.js"
