@@ -1,7 +1,7 @@
 {
 	"name": "rinzai",
 	"version": "0.0.0",
-	"description": "A framework for generating coding questions with linting and unit testing.",
+	"description": "A framework for generating coding questions and checking them for style, construction, and function.",
 	"main": "rinzai.js",
 	"repository": {
 		"type": "git",
@@ -17,13 +17,12 @@
 		"csslint": "~0.10.0",
 		"domify": "~1.3.0",
 		"jshint": "~2.5.2",
-		"lodash": "~2.4.1",
 		"jscs": "~1.5.8",
 		"css" : "~2.0.0",
 		"acorn" : "~0.6.0",
 		"jasmine-core" : "2.0.1"
 	},
 	"scripts" : {
-		"browserify" : "browserify --standalone Rinzai rinzai.js -o rinzai-browser.js && uglifyjs -o rinzai-browser.js rinzai-browser.js"
+		"browserify" : "mkdir -p dist && browserify --standalone Rinzai src/rinzai.js -o dist/rinzai-browser.js && uglifyjs -o dist/rinzai-browser.js dist/rinzai-browser.js"
 	}
 }
